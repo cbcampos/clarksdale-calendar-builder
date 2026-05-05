@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Calendar Designer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="editor" aria-label="Calendar customization controls">
+        <div class="editor__header">
+          <div>
+            <p class="eyebrow">Calendar Builder</p>
+            <h1>School year designer</h1>
+          </div>
+          <button class="icon-button" id="printButton" type="button" title="Print calendar" aria-label="Print calendar">
+            <span aria-hidden="true">⎙</span>
+          </button>
+        </div>
+
+        <section class="panel">
+          <h2>School Details</h2>
+          <label>
+            School name
+            <input id="schoolName" type="text" />
+          </label>
+          <label>
+            Calendar title
+            <input id="calendarTitle" type="text" />
+          </label>
+          <div class="grid-2">
+            <label>
+              School year
+              <select id="startYear"></select>
+            </label>
+            <label>
+              Program label
+              <input id="programLabel" type="text" />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Fast Ranges</h2>
+          <div class="range-form">
+            <label>
+              From
+              <input id="rangeStart" type="date" />
+            </label>
+            <label>
+              To
+              <input id="rangeEnd" type="date" />
+            </label>
+            <label>
+              Mark as
+              <select id="rangeType">
+                <option value="school">School day</option>
+                <option value="program">21st Century programming</option>
+                <option value="both">School + program</option>
+                <option value="pd">Professional development</option>
+                <option value="vacation">Vacation / no school</option>
+                <option value="abbreviated">Abbreviated day</option>
+              </select>
+            </label>
+            <button id="applyRange" type="button">Apply weekdays</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Single Date</h2>
+          <div class="range-form">
+            <label>
+              Date
+              <input id="singleDate" type="date" />
+            </label>
+            <label>
+              Day type
+              <select id="singleType">
+                <option value="clear">Clear day</option>
+                <option value="school">School day</option>
+                <option value="program">21st Century programming</option>
+                <option value="both">School + program</option>
+                <option value="pd">Professional development</option>
+                <option value="vacation">Vacation / no school</option>
+                <option value="abbreviated">Abbreviated day</option>
+              </select>
+            </label>
+            <label>
+              Event marker
+              <select id="singleMarker">
+                <option value="">None</option>
+                <option value="trimester">1st day of trimester</option>
+                <option value="quarter">1st day of quarter</option>
+                <option value="trimester,quarter">Trimester + quarter</option>
+                <option value="last">Last day of school</option>
+                <option value="reportK6">Report card night K-6</option>
+                <option value="report710">Report card night 7-10</option>
+                <option value="saturday">K-10 Saturday school</option>
+              </select>
+            </label>
+            <button id="applySingle" type="button">Update date</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Notes</h2>
+          <label>
+            K-6 hours
+            <input id="k6Hours" type="text" />
+          </label>
+          <label>
+            7-10 hours
+            <input id="upperHours" type="text" />
+          </label>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <div class="toolbar">
+          <div>
+            <p class="eyebrow">Live Preview</p>
+            <h2>Printable yearly calendar</h2>
+          </div>
+          <div class="toolbar__actions">
+            <button id="exportButton" type="button">Export JSON</button>
+            <button id="importButton" type="button">Import JSON</button>
+            <button id="resetButton" type="button">Reset sample</button>
+            <button id="clearButton" type="button">Clear dates</button>
+          </div>
+        </div>
+        <input id="importFile" class="visually-hidden" type="file" accept="application/json,.json" />
+        <section id="calendarOutput" class="calendar-sheet" aria-label="Generated school calendar"></section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

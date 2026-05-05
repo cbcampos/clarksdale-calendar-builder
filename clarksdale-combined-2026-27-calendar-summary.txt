@@ -1,0 +1,21 @@
+Output: /Users/ccampos/CascadeProjects/Collegiate/clarksdale-combined-2026-27-calendar.json
+Date entries: 260
+
+PDF review notes:
+- July 29, 2026 is the first instructional day; July 29-31 are the 3 July instructional days.
+- The 21st Century PDF prints 18 June programming days and 130 total, but its June grid includes an invalid June 31 green cell; June 18 is retained as no-school/program to preserve the printed total.
+
+July 2026: school 3, program 0
+August 2026: school 21, program 9
+September 2026: school 21, program 19
+October 2026: school 18, program 7
+November 2026: school 16, program 14
+December 2026: school 14, program 7
+January 2027: school 18, program 12
+February 2027: school 18, program 14
+March 2027: school 16, program 10
+April 2027: school 22, program 20
+May 2027: school 15, program 0
+June 2027: school 0, program 18
+
+Totals: school 182, program 130
