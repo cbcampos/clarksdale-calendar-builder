@@ -301,6 +301,10 @@ select {
   background: var(--school);
 }
 
+.type-summerbreak {
+  background: var(--school);
+}
+
 .type-program {
   background: var(--school);
 }

@@ -14,8 +14,8 @@ const monthNames = [
 ];
 
 const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const canonicalDayTypes = new Set(["school", "pd", "vacation", "abbreviated"]);
-const importDayTypes = new Set(["school", "program", "both", "pd", "vacation", "abbreviated"]);
+const canonicalDayTypes = new Set(["school", "pd", "vacation", "abbreviated", "summerbreak"]);
+const importDayTypes = new Set(["school", "program", "both", "pd", "vacation", "abbreviated", "summerbreak"]);
 const allowedMarkers = new Set(["trimester", "quarter", "last", "reportK6", "report710", "saturday"]);
 const defaultStartYear = 2026;
 const schoolYearOptions = Array.from({ length: 11 }, (_, index) => defaultStartYear + index);
@@ -173,7 +173,7 @@ function normalizeImportedDayEntry(entry) {
     program = true;
   }
 
-  if (type === "pd" || type === "vacation") {
+  if (type === "pd" || type === "vacation" || type === "summerbreak") {
     program = false;
   }
 
@@ -232,7 +232,7 @@ function setDateType(iso, type) {
     next.program = true;
   } else if (canonicalDayTypes.has(type)) {
     next.type = type;
-    if (type === "pd" || type === "vacation") {
+    if (type === "pd" || type === "vacation" || type === "summerbreak") {
       next.program = false;
     }
   }
@@ -602,7 +602,6 @@ function render() {
       <section class="block">
         <div class="block__title">LEGEND</div>
         <div class="legend">
-          <div class="legend-item"><span class="swatch"></span><span>School Day (Instructional)</span></div>
           <div class="legend-item"><span class="swatch swatch--pd"></span><span>Professional Development<br />No School for Scholars</span></div>
           <div class="legend-item"><span class="swatch swatch--program"></span><span data-role="program-legend-label">${escapeHtml(state.programLabel)} Day Only / No School</span></div>
           <div class="legend-item"><span class="swatch swatch--vacation"></span><span>Vacation / No School</span></div>
