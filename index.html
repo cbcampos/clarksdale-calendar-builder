@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>School Calendar Designer</title>
-    <link rel="stylesheet" href="styles.css" />
+    <script>
+      const assetVersion = Date.now().toString();
+      const stylesheet = document.createElement("link");
+      stylesheet.rel = "stylesheet";
+      stylesheet.href = `styles.css?v=${assetVersion}`;
+      document.head.append(stylesheet);
+    </script>
   </head>
   <body>
     <div class="app">
@@ -136,6 +142,10 @@
       </main>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+      const appScript = document.createElement("script");
+      appScript.src = `app.js?v=${assetVersion}`;
+      document.body.append(appScript);
+    </script>
   </body>
 </html>
