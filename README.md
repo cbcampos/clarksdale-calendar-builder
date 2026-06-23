@@ -30,15 +30,7 @@ The app supports:
 
 ## Fonts
 
-The calendar is designed to use Brandon Grotesque. On the original development machine, the CSS references these locally installed font files:
-
-```text
-/Users/ccampos/Library/Fonts/Brandon_reg.otf
-/Users/ccampos/Library/Fonts/Brandon_med.otf
-/Users/ccampos/Library/Fonts/Brandon_bld.otf
-```
-
-If those files are not installed at those paths, the browser will fall back to system sans-serif fonts. To preserve the intended appearance on another machine, install Brandon Grotesque locally or update the `@font-face` paths in `styles.css` to match that machine.
+The app now uses a portable sans-serif stack in `styles.css` and does not depend on machine-specific font paths. If you want to restore Brandon Grotesque on a given machine, add local or repo-relative `@font-face` rules instead of absolute home-directory paths.
 
 ## Printing
 
@@ -47,3 +39,7 @@ Use a browser print dialog for the final calendar. Set the print scale to `60%` 
 ## Data
 
 `clarksdale-combined-2026-27-calendar.json` is the corrected import file generated from the 2026-27 source calendars.
+
+## Import behavior
+
+Imported JSON is validated before it is applied. Supported files use the existing top-level fields plus a `days` object keyed by ISO date. Unknown day types, unknown markers, and malformed day entries are discarded during import, and malformed documents are rejected.
