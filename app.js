@@ -517,7 +517,7 @@ function renderMonth({ year, month }, derivedData) {
       <div class="month__footer">
         <span>School Days: ${totals.school || "–"}</span>
         <span></span>
-        <span class="program-count">Program Days: ${totals.program}</span>
+        <span class="program-count">21st Century Days: ${totals.program}</span>
       </div>
     </article>
   `;
