@@ -515,7 +515,7 @@ function renderMonth({ year, month }, derivedData) {
       <div class="weekday-row">${weekdays.map((day) => `<div>${day}</div>`).join("")}</div>
       <div class="days">${cells.join("")}</div>
       <div class="month__footer">
-        <span>School Days: ${totals.school || "–"}</span>
+        <span>School Days: ${totals.school}</span>
         <span></span>
         <span class="program-count">21st Century Days: ${totals.program}</span>
       </div>
