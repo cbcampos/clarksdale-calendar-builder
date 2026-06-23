@@ -593,7 +593,6 @@ function render() {
       <div class="summary">
         <div><strong data-role="school-total">${currentDerivedData.yearTotals.school}</strong> Instructional Days</div>
         <div><strong data-role="program-total">${currentDerivedData.yearTotals.program}</strong> <span data-role="program-summary-label">${escapeHtml(state.programLabel)}</span> Days</div>
-        <div>K-10 Saturday School: 9:00 - 11:30 am</div>
       </div>
     </header>
     <div class="months-grid">
@@ -619,7 +618,6 @@ function render() {
           ${markerLegend("quarter", "1st Day of a Quarter - 7 - 10")}
           ${markerLegend("report710", "Report Card Night - 7 - 10")}
           ${markerLegend("last", "Last Day of School")}
-          ${markerLegend("saturday", "K-10 Saturday School")}
         </div>
       </section>
       <section class="block">
