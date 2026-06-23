@@ -30,7 +30,7 @@ The app supports:
 
 ## Fonts
 
-The app now uses a portable sans-serif stack in `styles.css` and does not depend on machine-specific font paths. If you want to restore Brandon Grotesque on a given machine, add local or repo-relative `@font-face` rules instead of absolute home-directory paths.
+The required Brandon Grotesque font files are bundled in `assets/fonts/` and loaded with repo-relative `@font-face` rules in `styles.css`. The app will use those bundled files by default and then fall back to the system sans-serif stack if they are unavailable.
 
 ## Printing
 

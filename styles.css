@@ -1,3 +1,21 @@
+@font-face {
+  font-family: "Brandon Grotesque";
+  src: url("./assets/fonts/Brandon_reg.otf") format("opentype");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Brandon Grotesque";
+  src: url("./assets/fonts/Brandon_med.otf") format("opentype");
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Brandon Grotesque";
+  src: url("./assets/fonts/Brandon_bld.otf") format("opentype");
+  font-weight: 900;
+}
+
 :root {
   --brand-purple: #3f0963;
   --brand-gold: #f5aa27;
@@ -21,7 +39,7 @@
   --vacation: var(--brand-warm-gray);
   --abbrev: var(--brand-gold);
   --program-accent: #6aa84f;
-  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Brandon Grotesque", "Avenir Next", "Trebuchet MS", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 * {
