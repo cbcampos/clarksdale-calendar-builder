@@ -619,7 +619,7 @@ function render() {
           ${markerLegend("quarter", "1st Day of a Quarter - 7 - 10")}
           ${markerLegend("report710", "Report Card Night - 7 - 10")}
           ${markerLegend("last", "Last Day of School")}
-          ${markerLegend("saturday", "K-10 Saturday School<br />9:00 - 11:30 am")}
+          ${markerLegend("saturday", "K-10 Saturday School")}
         </div>
       </section>
       <section class="block">
