@@ -858,6 +858,22 @@ function formatDateSpan(event) {
   return formatShortDate(event.start);
 }
 
+function formatAgendaDate(iso) {
+  const date = parseIso(iso);
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatAgendaDateSpan(event) {
+  if (event.end && event.end !== event.start) {
+    return `${formatAgendaDate(event.start)} - ${formatAgendaDate(event.end)}`;
+  }
+  return formatAgendaDate(event.start);
+}
+
 function formatTimeLabel(event) {
   if (event.allDay || !event.startDateTime) return "";
   const start = new Date(event.startDateTime);
@@ -880,7 +896,7 @@ function formatEventTitle(event) {
 
 function groupEventsByDate(events) {
   return events.reduce((groups, event) => {
-    const dateLabel = formatDateSpan(event);
+    const dateLabel = formatAgendaDateSpan(event);
     const existing = groups.find((group) => group.dateLabel === dateLabel);
 
     if (existing) {
