@@ -691,14 +691,14 @@ select {
 
 .event-list {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   align-content: start;
   margin: 16px 0 0;
   padding: 0;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.12;
+  line-height: 1.14;
   text-align: left;
 }
 
@@ -725,7 +725,7 @@ select {
 
 .event-row {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-columns: 112px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
   break-inside: avoid;
@@ -740,6 +740,14 @@ select {
 
 .event-row__title {
   min-width: 0;
+}
+
+.event-row--all-day {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.event-row--all-day .event-row__time {
+  display: none;
 }
 
 .event-row--school .event-row__title {

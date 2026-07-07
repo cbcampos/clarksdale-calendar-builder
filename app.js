@@ -908,7 +908,7 @@ function renderEventAgenda(events) {
               .map((event) => {
                 const timeLabel = formatTimeLabel(event);
                 return `
-                  <li class="event-row ${event.source === "school" ? "event-row--school" : ""}">
+                  <li class="event-row ${event.source === "school" ? "event-row--school" : ""} ${timeLabel ? "" : "event-row--all-day"}">
                     <span class="event-row__time">${timeLabel ? escapeHtml(timeLabel) : ""}</span>
                     <span class="event-row__title">${escapeHtml(formatEventTitle(event))}</span>
                   </li>
