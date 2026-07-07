@@ -737,7 +737,7 @@ select {
 
 .event-row {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 104px;
   gap: 8px;
   align-items: start;
   break-inside: avoid;
@@ -745,13 +745,17 @@ select {
 }
 
 .event-row__time {
+  grid-column: 2;
   color: var(--brand-charcoal);
   font-size: 12px;
   font-weight: 800;
+  text-align: right;
   white-space: nowrap;
 }
 
 .event-row__title {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
 }
 
