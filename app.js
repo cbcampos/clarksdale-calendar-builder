@@ -24,6 +24,8 @@ const storageKey = "clarksdale-school-calendar-v2";
 const defaultCalendarPath = "school-calendar-2026-2027.json";
 const feedConfig = {
   path: "calendar-feed.ics",
+  googleCalendarId: "o59hmaf4ut144dmc69opn42j8c@group.calendar.google.com",
+  googleCalendarApiKey: window.CalendarBuilderConfig?.googleCalendarApiKey || "",
   label: "School calendar feed",
 };
 const stateFields = [
@@ -41,6 +43,7 @@ const stateFields = [
   "feedError",
   "feedLoadedTotal",
   "feedUsingCache",
+  "feedSource",
 ];
 const schoolDateLabels = {
   pd: "Professional Development Day - No School for Scholars",
@@ -136,6 +139,7 @@ function createDefaultState() {
     feedError: "",
     feedLoadedTotal: 0,
     feedUsingCache: false,
+    feedSource: "",
   };
 }
 
@@ -433,6 +437,7 @@ function sanitizeStateData(data) {
   if ("feedError" in data && typeof data.feedError !== "string") return null;
   if ("feedLoadedTotal" in data && typeof data.feedLoadedTotal !== "number") return null;
   if ("feedUsingCache" in data && typeof data.feedUsingCache !== "boolean") return null;
+  if ("feedSource" in data && typeof data.feedSource !== "string") return null;
 
   if (typeof data.schoolName === "string") next.schoolName = data.schoolName;
   if (typeof data.calendarTitle === "string") next.calendarTitle = data.calendarTitle;
@@ -449,6 +454,7 @@ function sanitizeStateData(data) {
   if (typeof data.feedError === "string") next.feedError = data.feedError;
   if (typeof data.feedLoadedTotal === "number") next.feedLoadedTotal = data.feedLoadedTotal;
   if (typeof data.feedUsingCache === "boolean") next.feedUsingCache = data.feedUsingCache;
+  if (typeof data.feedSource === "string") next.feedSource = data.feedSource;
 
   next.days = {};
   if (isPlainObject(data.days)) {
@@ -479,6 +485,7 @@ function replaceState(nextState) {
   state.feedError = nextState.feedError;
   state.feedLoadedTotal = nextState.feedLoadedTotal;
   state.feedUsingCache = nextState.feedUsingCache;
+  state.feedSource = nextState.feedSource;
 }
 
 function applyStateData(data) {
@@ -991,6 +998,34 @@ function parseEventFile(text, fileName = "") {
   return normalizeImportedEvents(JSON.parse(text));
 }
 
+function buildGoogleCalendarApiUrl() {
+  const startIso = state.reportStartDate || getTodayIso();
+  const endIso = addDays(startIso, 42);
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(feedConfig.googleCalendarId)}/events`);
+
+  url.searchParams.set("key", feedConfig.googleCalendarApiKey);
+  url.searchParams.set("timeMin", parseIso(startIso).toISOString());
+  url.searchParams.set("timeMax", parseIso(endIso).toISOString());
+  url.searchParams.set("singleEvents", "true");
+  url.searchParams.set("orderBy", "startTime");
+  url.searchParams.set("maxResults", "2500");
+  url.searchParams.set("timeZone", "America/Chicago");
+
+  return url;
+}
+
+async function fetchGoogleCalendarApiEvents() {
+  const response = await fetch(buildGoogleCalendarApiUrl(), { cache: "no-store" });
+  if (!response.ok) throw new Error(`Live calendar request failed: ${response.status}`);
+  return normalizeImportedEvents(await response.json());
+}
+
+async function fetchIcsSnapshotEvents() {
+  const response = await fetch(feedConfig.path, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Feed request failed: ${response.status}`);
+  return parseEventFile(await response.text(), feedConfig.path);
+}
+
 function formatStatusDate(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -1022,18 +1057,20 @@ function updateFeedStatus(visibleCount = 0) {
   } else if (state.feedError) {
     feedStatus.textContent = "Feed unavailable. Showing school-calendar events only.";
   } else if (state.feedLoadedAt) {
-    feedStatus.textContent = `Feed loaded ${formatStatusDate(state.feedLoadedAt)} - ${visibleCount} events shown`;
+    const sourceLabel = state.feedSource === "google-api" ? "Live Google Calendar" : "Snapshot feed";
+    feedStatus.textContent = `${sourceLabel} loaded ${formatStatusDate(state.feedLoadedAt)} - ${visibleCount} events shown`;
   } else {
     feedStatus.textContent = "Feed not loaded yet.";
   }
 }
 
-function applyLoadedFeed(importedEvents) {
+function applyLoadedFeed(importedEvents, feedSource = "snapshot") {
   state.googleEvents = importedEvents;
   state.feedLoadedAt = new Date().toISOString();
   state.feedError = "";
   state.feedLoadedTotal = importedEvents.length;
   state.feedUsingCache = false;
+  state.feedSource = feedSource;
 }
 
 async function loadCalendarFeed({ manual = false } = {}) {
@@ -1044,11 +1081,17 @@ async function loadCalendarFeed({ manual = false } = {}) {
   }
 
   try {
-    const response = await fetch(feedConfig.path, { cache: "no-store" });
-    if (!response.ok) throw new Error(`Feed request failed: ${response.status}`);
-    const text = await response.text();
-    const importedEvents = parseEventFile(text, feedConfig.path);
-    applyLoadedFeed(importedEvents);
+    let importedEvents = [];
+    let feedSource = "snapshot";
+
+    if (feedConfig.googleCalendarApiKey) {
+      importedEvents = await fetchGoogleCalendarApiEvents();
+      feedSource = "google-api";
+    } else {
+      importedEvents = await fetchIcsSnapshotEvents();
+    }
+
+    applyLoadedFeed(importedEvents, feedSource);
     state.outputMode = "sixWeek";
     syncControlsFromState();
     render();
@@ -1058,7 +1101,7 @@ async function loadCalendarFeed({ manual = false } = {}) {
     state.feedUsingCache = state.googleEvents.length > 0;
     render();
     if (manual && !state.feedUsingCache) {
-      alert("The school calendar feed could not be loaded. Make sure the local calendar proxy server is running.");
+      alert("The school calendar feed could not be loaded. Check the Google Calendar API key or the bundled feed snapshot.");
     }
   } finally {
     if (button) {
@@ -1080,6 +1123,7 @@ function clearFeedState() {
   state.feedError = "";
   state.feedLoadedTotal = 0;
   state.feedUsingCache = false;
+  state.feedSource = "";
   hasAutoRequestedFeed = true;
 }
 

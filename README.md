@@ -24,7 +24,7 @@ http://localhost:8000
 
 `serve.py` also proxies the public Google Calendar ICS feed used by the 6 week events view at `/calendar-feed.ics`, avoiding browser CORS failures.
 
-Opening `index.html` directly still works for manual calendar editing, but automatic feed refresh requires `python3 serve.py`.
+Opening `index.html` directly still works for manual calendar editing. Live Google Calendar refresh on GitHub Pages requires a Google Calendar API key in `calendar-config.js`; without that key, the app falls back to the bundled `calendar-feed.ics` snapshot.
 
 The app supports:
 
@@ -34,7 +34,7 @@ The app supports:
 - event markers, including combined trimester and quarter starts
 - local autosave
 - JSON export and import
-- Google Calendar ICS feed loading for the 6 week events view
+- Google Calendar live API or ICS snapshot feed loading for the 6 week events view
 - explicit print buttons for the yearly calendar and 6 week PDF
 - print-ready calendar output
 
@@ -51,7 +51,31 @@ Use the app's print buttons for the intended output:
 
 ## Data
 
-`school-calendar-2026-2027.json` is loaded by default when the app starts. The Google Calendar feed is bundled as `calendar-feed.ics` for GitHub Pages. Refresh the bundled feed snapshot by running `python3 serve.py` locally and downloading the latest feed, or by adding a GitHub Actions workflow with a token that has `workflow` scope.
+`school-calendar-2026-2027.json` is loaded by default when the app starts.
+
+The 6 week events view can load events in two ways:
+
+- Live Google Calendar API: add a browser-restricted Google Calendar API key to `calendar-config.js`.
+- Snapshot fallback: leave the key blank and the app loads the bundled `calendar-feed.ics`.
+
+For true staff refresh on GitHub Pages:
+
+1. In Google Cloud Console, create or select a project.
+2. Enable the Google Calendar API.
+3. Create an API key.
+4. Restrict the key to HTTP referrers:
+   - `https://cbcampos.github.io/*`
+   - `http://localhost:*` if local testing is needed
+5. Restrict the key to the Google Calendar API.
+6. Put the key in `calendar-config.js`:
+
+```js
+window.CalendarBuilderConfig = {
+  googleCalendarApiKey: "YOUR_RESTRICTED_API_KEY",
+};
+```
+
+After that, the existing `Refresh feed` button loads the public Google Calendar live from GitHub Pages.
 
 ## Import behavior
 

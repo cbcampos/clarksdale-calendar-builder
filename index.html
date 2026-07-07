@@ -168,9 +168,16 @@
     </div>
 
     <script>
-      const appScript = document.createElement("script");
-      appScript.src = `app.js?v=${assetVersion}`;
-      document.body.append(appScript);
+      const loadApp = () => {
+        const appScript = document.createElement("script");
+        appScript.src = `app.js?v=${assetVersion}`;
+        document.body.append(appScript);
+      };
+      const configScript = document.createElement("script");
+      configScript.src = `calendar-config.js?v=${assetVersion}`;
+      configScript.onload = loadApp;
+      configScript.onerror = loadApp;
+      document.body.append(configScript);
     </script>
   </body>
 </html>
