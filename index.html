@@ -122,15 +122,39 @@
             <input id="upperHours" type="text" />
           </label>
         </section>
+
+        <section class="panel">
+          <h2>6 Week Events</h2>
+          <label>
+            Preview
+            <select id="outputMode">
+              <option value="year">Yearly calendar</option>
+              <option value="sixWeek">6 week events</option>
+            </select>
+          </label>
+          <label>
+            Start date
+            <input id="reportStartDate" type="date" />
+          </label>
+          <div class="report-actions">
+            <button id="loadFeedButton" type="button">Refresh feed</button>
+            <button id="importEventsButton" type="button">Import events</button>
+            <button id="clearEventsButton" type="button">Clear events</button>
+          </div>
+          <p class="helper-text"><span id="eventCount">0</span> events shown in this 6 week window</p>
+          <p class="helper-text" id="feedStatus">Feed not loaded yet.</p>
+        </section>
       </aside>
 
       <main class="workspace">
         <div class="toolbar">
           <div>
             <p class="eyebrow">Live Preview</p>
-            <h2>Printable yearly calendar</h2>
+            <h2 id="previewTitle">Printable yearly calendar</h2>
           </div>
           <div class="toolbar__actions">
+            <button id="printYearButton" type="button">Print year calendar</button>
+            <button id="printSixWeekButton" type="button">Print 6 week PDF</button>
             <button id="exportButton" type="button">Export JSON</button>
             <button id="importButton" type="button">Import JSON</button>
             <button id="resetButton" type="button">Reset sample</button>
@@ -138,6 +162,7 @@
           </div>
         </div>
         <input id="importFile" class="visually-hidden" type="file" accept="application/json,.json" />
+        <input id="importEventsFile" class="visually-hidden" type="file" accept=".ics,text/calendar,application/json,.json" />
         <section id="calendarOutput" class="calendar-sheet" aria-label="Generated school calendar"></section>
       </main>
     </div>

@@ -2,14 +2,18 @@
 
 A static browser-based school calendar designer for building printable yearly school and 21st Century program calendars.
 
+Hosted site:
+
+```text
+https://cbcampos.github.io/clarksdale-calendar-builder/
+```
+
 ## Use
 
-Open `index.html` in a browser. The app is fully static, so no build step is required.
-
-From this folder, you can either double-click `index.html` or run a simple local server:
+Run the local server from this folder:
 
 ```sh
-python3 -m http.server 8000
+python3 serve.py
 ```
 
 Then open:
@@ -17,6 +21,10 @@ Then open:
 ```text
 http://localhost:8000
 ```
+
+`serve.py` also proxies the public Google Calendar ICS feed used by the 6 week events view at `/calendar-feed.ics`, avoiding browser CORS failures.
+
+Opening `index.html` directly still works for manual calendar editing, but automatic feed refresh requires `python3 serve.py`.
 
 The app supports:
 
@@ -26,6 +34,8 @@ The app supports:
 - event markers, including combined trimester and quarter starts
 - local autosave
 - JSON export and import
+- Google Calendar ICS feed loading for the 6 week events view
+- explicit print buttons for the yearly calendar and 6 week PDF
 - print-ready calendar output
 
 ## Fonts
@@ -34,11 +44,14 @@ The required Brandon Grotesque font files are bundled in `assets/fonts/` and loa
 
 ## Printing
 
-Use a browser print dialog for the final calendar. Set the print scale to `60%` for the intended one-page layout.
+Use the app's print buttons for the intended output:
+
+- `Print year calendar`: yearly one-page calendar; set print scale to `60%`.
+- `Print 6 week PDF`: six-week events calendar; use Letter, Portrait, and default/100% scale.
 
 ## Data
 
-`clarksdale-combined-2026-27-calendar.json` is the corrected import file generated from the 2026-27 source calendars.
+`school-calendar-2026-2027.json` is loaded by default when the app starts. The Google Calendar feed is bundled as `calendar-feed.ics` for GitHub Pages. Refresh the bundled feed snapshot by running `python3 serve.py` locally and downloading the latest feed, or by adding a GitHub Actions workflow with a token that has `workflow` scope.
 
 ## Import behavior
 

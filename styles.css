@@ -93,6 +93,24 @@ button:hover {
   gap: 12px;
 }
 
+.report-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.report-actions button {
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.helper-text {
+  margin: 0;
+  color: var(--brand-charcoal);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .editor__header {
   grid-template-columns: 1fr auto;
   align-items: start;
@@ -106,7 +124,13 @@ button:hover {
 }
 
 .toolbar__actions {
-  grid-auto-flow: column;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.toolbar__actions button {
+  flex: 0 0 auto;
 }
 
 .visually-hidden {
@@ -193,6 +217,15 @@ select {
   box-shadow: 0 18px 40px rgba(17, 24, 39, 0.18);
   padding: 12px;
   transform-origin: top left;
+}
+
+.calendar-sheet--report {
+  width: 816px;
+  min-height: 1056px;
+  border: 0;
+  padding: 36px 46px 32px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
 }
 
 .calendar-header {
@@ -438,6 +471,246 @@ select {
   background: #7d8390;
 }
 
+.report-header {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  margin-bottom: 14px;
+}
+
+.report-brand {
+  display: grid;
+  grid-template-columns: 78px auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-logo {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+}
+
+.report-brand h3 {
+  margin: 0;
+  color: var(--brand-purple);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.report-brand p {
+  margin: 5px 0 0;
+  color: var(--brand-gold);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.report-header h2 {
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.snapshot-month h4 {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.snapshot-weekdays,
+.snapshot-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.snapshot-weekdays {
+  border-left: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+}
+
+.snapshot-weekdays div {
+  background: #07416f;
+  color: white;
+  border-top: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 20px;
+  text-align: center;
+}
+
+.snapshot-weekdays div:last-child {
+  border-right: 0;
+}
+
+.snapshot-days {
+  border-left: 1px solid var(--ink);
+  border-top: 1px solid var(--ink);
+}
+
+.snapshot-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 19px;
+  border-right: 1px solid #5d5d5d;
+  border-bottom: 1px solid #5d5d5d;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  background: white;
+}
+
+.snapshot-day.day--outside {
+  color: #9ca3af;
+  background: #f7f7f7;
+}
+
+.snapshot-day.type-pd {
+  background: var(--pd);
+}
+
+.snapshot-day.type-vacation {
+  background: var(--vacation);
+}
+
+.snapshot-day.type-summerbreak {
+  background: var(--school);
+}
+
+.snapshot-day.type-abbreviated {
+  background: var(--abbrev);
+}
+
+.snapshot-day.day--program::after {
+  left: 4px;
+  right: 4px;
+  bottom: 2px;
+  height: 3px;
+}
+
+.snapshot-day.day--program-only {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(101, 168, 63, 0.22) 0 5px,
+      rgba(101, 168, 63, 0.08) 5px 10px
+    ),
+    white;
+}
+
+.snapshot-day.day--program-only::after {
+  left: 4px;
+  right: 4px;
+  bottom: 2px;
+  height: 3px;
+}
+
+.snapshot-day .marker--trimester,
+.snapshot-day .marker--quarter {
+  inset: 2px;
+  border-width: 2px;
+}
+
+.snapshot-day .marker--trimester + .marker--quarter {
+  inset: 5px;
+}
+
+.snapshot-day .marker--last {
+  top: 3px;
+  left: 4px;
+  width: 12px;
+  height: 9px;
+}
+
+.snapshot-day .marker--last::before {
+  height: 14px;
+}
+
+.snapshot-day .marker--reportK6,
+.snapshot-day .marker--report710 {
+  font-size: 17px;
+}
+
+.snapshot-day .marker--report710::before {
+  font-size: 19px;
+}
+
+.snapshot-day--in-range::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.report-legend {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-self: end;
+  gap: 7px;
+  margin: 18px 0 0;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.report-legend__group,
+.report-legend__events {
+  display: grid;
+  grid-template-columns: repeat(5, max-content);
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.report-legend__group > div,
+.report-legend__events .legend-item {
+  display: grid;
+  grid-template-columns: 30px max-content;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.report-legend .swatch {
+  width: 24px;
+  height: 16px;
+}
+
+.event-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  margin: 20px 0 0;
+  padding: 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.18;
+  list-style: none;
+  text-align: center;
+}
+
+.event-list li {
+  break-inside: avoid;
+}
+
+.event-list__item--school {
+  font-weight: 700;
+}
+
 .program-count {
   color: var(--brand-purple);
 }
@@ -532,6 +805,40 @@ select {
   justify-self: center;
 }
 
+.report-legend .event-icon {
+  width: 22px;
+  height: 22px;
+  justify-self: center;
+}
+
+.report-legend .marker--trimester,
+.report-legend .marker--quarter {
+  inset: 2px;
+  border-width: 2px;
+}
+
+.report-legend .marker--reportK6,
+.report-legend .marker--report710 {
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.report-legend .marker--report710::before {
+  font-size: 26px;
+}
+
+.report-legend .marker--last {
+  top: 6px;
+  left: 4px;
+  width: 18px;
+  height: 12px;
+}
+
+.report-legend .marker--last::before {
+  height: 18px;
+}
+
 .notes {
   padding: 12px 20px;
   font-size: 14px;
@@ -589,5 +896,11 @@ select {
     box-shadow: none;
     transform: none;
     page-break-inside: avoid;
+  }
+
+  .calendar-sheet--report {
+    width: 8.5in;
+    min-height: 11in;
+    padding: 0.35in 0.48in 0.32in;
   }
 }

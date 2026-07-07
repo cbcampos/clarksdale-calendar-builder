@@ -17,10 +17,45 @@ const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const canonicalDayTypes = new Set(["school", "pd", "vacation", "abbreviated", "summerbreak"]);
 const importDayTypes = new Set(["school", "program", "both", "pd", "vacation", "abbreviated", "summerbreak"]);
 const allowedMarkers = new Set(["trimester", "quarter", "last", "reportK6", "report710", "saturday"]);
+const outputModes = new Set(["year", "sixWeek"]);
 const defaultStartYear = 2026;
 const schoolYearOptions = Array.from({ length: 11 }, (_, index) => defaultStartYear + index);
-const storageKey = "clarksdale-school-calendar-v1";
-const stateFields = ["schoolName", "calendarTitle", "startYear", "programLabel", "k6Hours", "upperHours", "days"];
+const storageKey = "clarksdale-school-calendar-v2";
+const defaultCalendarPath = "school-calendar-2026-2027.json";
+const feedConfig = {
+  path: "calendar-feed.ics",
+  label: "School calendar feed",
+};
+const stateFields = [
+  "schoolName",
+  "calendarTitle",
+  "startYear",
+  "programLabel",
+  "k6Hours",
+  "upperHours",
+  "days",
+  "outputMode",
+  "reportStartDate",
+  "googleEvents",
+  "feedLoadedAt",
+  "feedError",
+  "feedLoadedTotal",
+  "feedUsingCache",
+];
+const schoolDateLabels = {
+  pd: "Professional Development Day - No School for Scholars",
+  vacation: "Vacation / No School for Scholars",
+  summerbreak: "Summer Break - No School for Scholars",
+  abbreviated: "Early Dismissal",
+};
+const schoolMarkerLabels = {
+  trimester: "First Day of Trimester",
+  quarter: "First Day of Quarter",
+  last: "Last Day of School",
+  reportK6: "Report Card Night - K-6",
+  report710: "Report Card Night - 7-10",
+  saturday: "K-10 Saturday School",
+};
 const sampleStartYear = 2026;
 const sampleProgramRanges = [
   ["2026-08-17", "2026-09-30"],
@@ -94,6 +129,13 @@ function createDefaultState() {
     k6Hours: "M - F   7:45 am - 3:00 pm     Afterschool: 3:45 - 5:15 pm",
     upperHours: "M - F   8:00 am - 3:45 pm   Afterschool: 4:00 - 5:30 pm",
     days: {},
+    outputMode: "year",
+    reportStartDate: getTodayIso(),
+    googleEvents: [],
+    feedLoadedAt: "",
+    feedError: "",
+    feedLoadedTotal: 0,
+    feedUsingCache: false,
   };
 }
 
@@ -102,6 +144,12 @@ const controls = {};
 const view = {};
 let hasHydrated = false;
 let currentDerivedData = null;
+let hasAutoRequestedFeed = false;
+
+function getTodayIso() {
+  const today = new Date();
+  return isoDate(today.getFullYear(), today.getMonth(), today.getDate());
+}
 
 function isoDate(year, monthIndex, day) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -184,13 +232,104 @@ function normalizeImportedDayEntry(entry) {
   return { type, program, markers };
 }
 
+function toIsoFromDate(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
+  return isoDate(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function parseDateLike(value) {
+  if (value instanceof Date) {
+    return {
+      iso: toIsoFromDate(value),
+      date: value,
+      hasTime: value.getHours() + value.getMinutes() + value.getSeconds() > 0,
+    };
+  }
+
+  if (typeof value !== "string" || !value.trim()) return null;
+  const trimmed = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const date = parseIso(trimmed);
+    return { iso: trimmed, date, hasTime: false };
+  }
+
+  if (/^\d{8}$/.test(trimmed)) {
+    const date = new Date(Number(trimmed.slice(0, 4)), Number(trimmed.slice(4, 6)) - 1, Number(trimmed.slice(6, 8)));
+    return { iso: toIsoFromDate(date), date, hasTime: false };
+  }
+
+  const compactDateTime = trimmed.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(?:(\d{2}))?(Z)?$/);
+  if (compactDateTime) {
+    const [, year, month, day, hour, minute, second, zulu] = compactDateTime;
+    const seconds = Number(second || "00");
+    const date = zulu
+      ? new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), seconds))
+      : new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), seconds);
+    return { iso: toIsoFromDate(date), date, hasTime: true };
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    iso: toIsoFromDate(parsed),
+    date: parsed,
+    hasTime: !/^\d{4}-\d{2}-\d{2}$/.test(trimmed),
+  };
+}
+
+function normalizeImportedEvent(rawEvent, index = 0) {
+  if (!isPlainObject(rawEvent)) return null;
+  if (rawEvent.status === "CANCELLED") return null;
+
+  const startValue = rawEvent.start?.dateTime || rawEvent.start?.date || rawEvent.startDateTime || rawEvent.startDate || rawEvent.start || rawEvent.date;
+  const endValue = rawEvent.end?.dateTime || rawEvent.end?.date || rawEvent.endDateTime || rawEvent.endDate || rawEvent.end || startValue;
+  const start = parseDateLike(startValue);
+  const end = parseDateLike(endValue) || start;
+  const title = rawEvent.summary || rawEvent.title || rawEvent.name || rawEvent.subject;
+
+  if (!start || !start.iso || typeof title !== "string" || !title.trim()) return null;
+
+  const localAllDayTimes =
+    start.hasTime &&
+    end.hasTime &&
+    start.iso === end.iso &&
+    start.date.getHours() === 0 &&
+    start.date.getMinutes() === 0 &&
+    end.date.getHours() === 23 &&
+    end.date.getMinutes() >= 55;
+  const allDay = rawEvent.allDay === true || Boolean(rawEvent.start?.date) || !start.hasTime || localAllDayTimes;
+  const hasExclusiveAllDayEnd =
+    allDay && (Boolean(rawEvent.end?.date) || (typeof startValue === "string" && typeof endValue === "string" && /^\d{8}$/.test(startValue) && /^\d{8}$/.test(endValue)));
+  const inclusiveEndIso = hasExclusiveAllDayEnd && end.iso > start.iso ? addDays(end.iso, -1) : end.iso;
+  return {
+    id: String(rawEvent.id || rawEvent.uid || rawEvent.iCalUID || `event-${index}-${start.iso}`),
+    title: title.trim(),
+    start: start.iso,
+    end: inclusiveEndIso || start.iso,
+    startDateTime: start.hasTime ? start.date.toISOString() : "",
+    endDateTime: end.hasTime ? end.date.toISOString() : "",
+    allDay,
+    location: typeof rawEvent.location === "string" ? rawEvent.location.trim() : "",
+    description: typeof rawEvent.description === "string" ? rawEvent.description.trim() : "",
+  };
+}
+
+function normalizeImportedEvents(value) {
+  const rawEvents = Array.isArray(value) ? value : Array.isArray(value?.items) ? value.items : Array.isArray(value?.events) ? value.events : [];
+  return rawEvents
+    .map((event, index) => normalizeImportedEvent(event, index))
+    .filter(Boolean)
+    .sort(compareEvents);
+}
+
 function getCanonicalDayEntry(entry) {
   if (!isPlainObject(entry)) {
     return createEmptyDayEntry();
   }
 
   const type = canonicalDayTypes.has(entry.type) ? entry.type : null;
-  const program = entry.program === true && type !== "pd" && type !== "vacation";
+  const program = entry.program === true && type !== "pd" && type !== "vacation" && type !== "summerbreak";
   const markers = Array.isArray(entry.markers)
     ? entry.markers.filter((marker, index, values) => typeof marker === "string" && allowedMarkers.has(marker) && values.indexOf(marker) === index)
     : [];
@@ -285,15 +424,31 @@ function sanitizeStateData(data) {
   if ("programLabel" in data && typeof data.programLabel !== "string") return null;
   if ("k6Hours" in data && typeof data.k6Hours !== "string") return null;
   if ("upperHours" in data && typeof data.upperHours !== "string") return null;
+  if ("outputMode" in data && !outputModes.has(data.outputMode)) return null;
+  if ("reportStartDate" in data && typeof data.reportStartDate !== "string") return null;
   if ("startYear" in data && !schoolYearOptions.includes(Number(data.startYear))) return null;
   if ("days" in data && !isPlainObject(data.days)) return null;
+  if ("googleEvents" in data && !Array.isArray(data.googleEvents) && !isPlainObject(data.googleEvents)) return null;
+  if ("feedLoadedAt" in data && typeof data.feedLoadedAt !== "string") return null;
+  if ("feedError" in data && typeof data.feedError !== "string") return null;
+  if ("feedLoadedTotal" in data && typeof data.feedLoadedTotal !== "number") return null;
+  if ("feedUsingCache" in data && typeof data.feedUsingCache !== "boolean") return null;
 
   if (typeof data.schoolName === "string") next.schoolName = data.schoolName;
   if (typeof data.calendarTitle === "string") next.calendarTitle = data.calendarTitle;
   if (typeof data.programLabel === "string") next.programLabel = data.programLabel;
   if (typeof data.k6Hours === "string") next.k6Hours = data.k6Hours;
   if (typeof data.upperHours === "string") next.upperHours = data.upperHours;
+  if (outputModes.has(data.outputMode)) next.outputMode = data.outputMode;
+  if (typeof data.reportStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.reportStartDate)) {
+    next.reportStartDate = data.reportStartDate;
+  }
   if (schoolYearOptions.includes(Number(data.startYear))) next.startYear = Number(data.startYear);
+  if (Array.isArray(data.googleEvents) || isPlainObject(data.googleEvents)) next.googleEvents = normalizeImportedEvents(data.googleEvents);
+  if (typeof data.feedLoadedAt === "string") next.feedLoadedAt = data.feedLoadedAt;
+  if (typeof data.feedError === "string") next.feedError = data.feedError;
+  if (typeof data.feedLoadedTotal === "number") next.feedLoadedTotal = data.feedLoadedTotal;
+  if (typeof data.feedUsingCache === "boolean") next.feedUsingCache = data.feedUsingCache;
 
   next.days = {};
   if (isPlainObject(data.days)) {
@@ -317,6 +472,13 @@ function replaceState(nextState) {
   state.k6Hours = nextState.k6Hours;
   state.upperHours = nextState.upperHours;
   state.days = nextState.days;
+  state.outputMode = nextState.outputMode;
+  state.reportStartDate = nextState.reportStartDate;
+  state.googleEvents = nextState.googleEvents;
+  state.feedLoadedAt = nextState.feedLoadedAt;
+  state.feedError = nextState.feedError;
+  state.feedLoadedTotal = nextState.feedLoadedTotal;
+  state.feedUsingCache = nextState.feedUsingCache;
 }
 
 function applyStateData(data) {
@@ -346,6 +508,17 @@ function loadSavedState() {
   try {
     return applyStateData(JSON.parse(saved));
   } catch {
+    return false;
+  }
+}
+
+async function loadDefaultCalendarState() {
+  try {
+    const response = await fetch(defaultCalendarPath, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Default calendar request failed: ${response.status}`);
+    return applyStateData(await response.json());
+  } catch (error) {
+    console.error(error);
     return false;
   }
 }
@@ -380,6 +553,8 @@ function syncControlsFromState() {
   controls.programLabel.value = state.programLabel;
   controls.k6Hours.value = state.k6Hours;
   controls.upperHours.value = state.upperHours;
+  controls.outputMode.value = state.outputMode;
+  controls.reportStartDate.value = state.reportStartDate;
 }
 
 function syncDateDefaultsFromYear() {
@@ -523,6 +698,445 @@ function renderMonth({ year, month }, derivedData) {
   `;
 }
 
+function addDays(iso, days) {
+  const date = parseIso(iso);
+  date.setDate(date.getDate() + days);
+  return isoDate(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function compareEvents(a, b) {
+  return `${a.start} ${a.startDateTime || ""} ${a.title}`.localeCompare(`${b.start} ${b.startDateTime || ""} ${b.title}`);
+}
+
+function getReportMonths(startIso) {
+  const start = parseIso(startIso);
+  return Array.from({ length: 3 }, (_, index) => {
+    const date = new Date(start.getFullYear(), start.getMonth() + index, 1);
+    return { year: date.getFullYear(), month: date.getMonth() };
+  });
+}
+
+function eventOccursInRange(event, startIso, endIso) {
+  const eventEnd = event.end || event.start;
+  return event.start <= endIso && eventEnd >= startIso;
+}
+
+function getEventsInRange(startIso, endIso) {
+  return state.googleEvents.filter((event) => eventOccursInRange(event, startIso, endIso));
+}
+
+function eachDateInEvent(event) {
+  const dates = [];
+  let cursor = event.start;
+  const end = event.end || event.start;
+
+  while (cursor && cursor <= end) {
+    dates.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+
+  return dates;
+}
+
+function normalizeEventText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function eventConcepts(event) {
+  const text = normalizeEventText(event.title);
+  const concepts = new Set();
+
+  if (/\b(abbreviated|early dismissal|dismissal)\b/.test(text)) concepts.add("early-dismissal");
+  if (/\b(professional development|staff pd|pd day|pd)\b/.test(text)) concepts.add("pd");
+  if (/\b(no school|vacation|holiday|break)\b/.test(text)) concepts.add("no-school");
+  if (/\breport card\b/.test(text)) concepts.add("report-card");
+  if (/\bquarter\b/.test(text)) concepts.add("quarter");
+  if (/\btrimester\b/.test(text)) concepts.add("trimester");
+  if (/\blast day\b/.test(text)) concepts.add("last-day");
+  if (/\bsaturday school\b/.test(text)) concepts.add("saturday-school");
+
+  return concepts;
+}
+
+function eventsShareDate(a, b) {
+  const bDates = new Set(eachDateInEvent(b));
+  return eachDateInEvent(a).some((date) => bDates.has(date));
+}
+
+function eventsAreDuplicates(schoolEvent, importedEvent) {
+  if (!eventsShareDate(schoolEvent, importedEvent)) return false;
+
+  const schoolText = normalizeEventText(schoolEvent.title);
+  const importedText = normalizeEventText(importedEvent.title);
+  if (schoolText && importedText && schoolText === importedText) return true;
+
+  const schoolConcepts = eventConcepts(schoolEvent);
+  const importedConcepts = eventConcepts(importedEvent);
+  return [...schoolConcepts].some((concept) => importedConcepts.has(concept));
+}
+
+function getReportEvents(startIso, endIso) {
+  const schoolEvents = getSchoolCalendarEvents(startIso, endIso);
+  const importedEvents = getEventsInRange(startIso, endIso).filter(
+    (event) => !schoolEvents.some((schoolEvent) => eventsAreDuplicates(schoolEvent, event)),
+  );
+
+  return [...schoolEvents, ...importedEvents].sort(compareEvents);
+}
+
+function getSchoolCalendarEvents(startIso, endIso) {
+  const events = [];
+  let cursor = startIso;
+  let openRange = null;
+
+  function closeRange() {
+    if (!openRange) return;
+    events.push({
+      id: `school-${openRange.type}-${openRange.start}`,
+      source: "school",
+      title: schoolDateLabels[openRange.type],
+      start: openRange.start,
+      end: openRange.end,
+      allDay: true,
+    });
+    openRange = null;
+  }
+
+  while (cursor <= endIso) {
+    const entry = getCanonicalDayEntry(state.days[cursor]);
+    const rangeType = ["pd", "vacation", "summerbreak", "abbreviated"].includes(entry.type) ? entry.type : "";
+
+    if (rangeType) {
+      if (openRange?.type === rangeType && addDays(openRange.end, 1) === cursor) {
+        openRange.end = cursor;
+      } else {
+        closeRange();
+        openRange = { type: rangeType, start: cursor, end: cursor };
+      }
+    } else {
+      closeRange();
+    }
+
+    entry.markers.forEach((marker) => {
+      const label = schoolMarkerLabels[marker];
+      if (!label) return;
+      events.push({
+        id: `school-${marker}-${cursor}`,
+        source: "school",
+        title: label,
+        start: cursor,
+        end: cursor,
+        allDay: true,
+      });
+    });
+
+    cursor = addDays(cursor, 1);
+  }
+
+  closeRange();
+  return events;
+}
+
+function formatShortDate(iso) {
+  const date = parseIso(iso);
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatDateSpan(event) {
+  if (event.end && event.end !== event.start) {
+    return `${formatShortDate(event.start)} - ${formatShortDate(event.end)}`;
+  }
+  return formatShortDate(event.start);
+}
+
+function formatTimeLabel(event) {
+  if (event.allDay || !event.startDateTime) return "";
+  const start = new Date(event.startDateTime);
+  const end = event.endDateTime ? new Date(event.endDateTime) : null;
+  const timeOptions = { hour: "numeric", minute: "2-digit" };
+  const startLabel = start.toLocaleTimeString("en-US", timeOptions).replace(" ", " ");
+  if (!end || Number.isNaN(end.getTime()) || event.end !== event.start) return startLabel;
+  return `${startLabel}-${end.toLocaleTimeString("en-US", timeOptions).replace(" ", " ")}`;
+}
+
+function formatEventLine(event) {
+  const timeLabel = formatTimeLabel(event);
+  const location = event.location && !event.title.toLowerCase().includes(event.location.toLowerCase()) ? ` - ${event.location}` : "";
+  return `${formatDateSpan(event)}${timeLabel ? ` @ ${timeLabel}` : ""} - ${event.title}${location}`;
+}
+
+function unfoldIcsLines(text) {
+  return text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "").split(/\r?\n/);
+}
+
+function cleanIcsText(value = "") {
+  return value
+    .replaceAll("\\n", " ")
+    .replaceAll("\\,", ",")
+    .replaceAll("\\;", ";")
+    .replaceAll("\\\\", "\\")
+    .trim();
+}
+
+function parseIcsEvents(text) {
+  const events = [];
+  let current = null;
+
+  unfoldIcsLines(text).forEach((line) => {
+    if (line === "BEGIN:VEVENT") {
+      current = {};
+      return;
+    }
+
+    if (line === "END:VEVENT") {
+      if (current) events.push(current);
+      current = null;
+      return;
+    }
+
+    if (!current || !line.includes(":")) return;
+    const separatorIndex = line.indexOf(":");
+    const rawKey = line.slice(0, separatorIndex);
+    const value = cleanIcsText(line.slice(separatorIndex + 1));
+    const key = rawKey.split(";")[0].toUpperCase();
+
+    if (key === "UID") current.uid = value;
+    if (key === "SUMMARY") current.summary = value;
+    if (key === "DESCRIPTION") current.description = value;
+    if (key === "LOCATION") current.location = value;
+    if (key === "STATUS") current.status = value;
+    if (key === "DTSTART") current.start = value;
+    if (key === "DTEND") current.end = value;
+  });
+
+  return normalizeImportedEvents(events);
+}
+
+function parseEventFile(text, fileName = "") {
+  const looksLikeIcs = /\.ics$/i.test(fileName) || /BEGIN:VCALENDAR/.test(text);
+  if (looksLikeIcs) return parseIcsEvents(text);
+  return normalizeImportedEvents(JSON.parse(text));
+}
+
+function formatStatusDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function updateFeedStatus(visibleCount = 0) {
+  const eventCount = document.querySelector("#eventCount");
+  const feedStatus = document.querySelector("#feedStatus");
+
+  if (eventCount) {
+    eventCount.textContent = String(visibleCount);
+  }
+
+  if (!feedStatus) return;
+
+  if (state.feedError && state.googleEvents.length) {
+    const loadedAt = formatStatusDate(state.feedLoadedAt);
+    feedStatus.textContent = loadedAt
+      ? `Using last loaded feed from ${loadedAt}. Refresh failed.`
+      : "Using cached feed. Refresh failed.";
+  } else if (state.feedError) {
+    feedStatus.textContent = "Feed unavailable. Showing school-calendar events only.";
+  } else if (state.feedLoadedAt) {
+    feedStatus.textContent = `Feed loaded ${formatStatusDate(state.feedLoadedAt)} - ${visibleCount} events shown`;
+  } else {
+    feedStatus.textContent = "Feed not loaded yet.";
+  }
+}
+
+function applyLoadedFeed(importedEvents) {
+  state.googleEvents = importedEvents;
+  state.feedLoadedAt = new Date().toISOString();
+  state.feedError = "";
+  state.feedLoadedTotal = importedEvents.length;
+  state.feedUsingCache = false;
+}
+
+async function loadCalendarFeed({ manual = false } = {}) {
+  const button = document.querySelector("#loadFeedButton");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Refreshing...";
+  }
+
+  try {
+    const response = await fetch(feedConfig.path, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Feed request failed: ${response.status}`);
+    const text = await response.text();
+    const importedEvents = parseEventFile(text, feedConfig.path);
+    applyLoadedFeed(importedEvents);
+    state.outputMode = "sixWeek";
+    syncControlsFromState();
+    render();
+  } catch (error) {
+    console.error(error);
+    state.feedError = error instanceof Error ? error.message : "Feed refresh failed";
+    state.feedUsingCache = state.googleEvents.length > 0;
+    render();
+    if (manual && !state.feedUsingCache) {
+      alert("The school calendar feed could not be loaded. Make sure the local calendar proxy server is running.");
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Refresh feed";
+    }
+  }
+}
+
+function autoLoadCalendarFeed() {
+  if (hasAutoRequestedFeed) return;
+  hasAutoRequestedFeed = true;
+  loadCalendarFeed();
+}
+
+function clearFeedState() {
+  state.googleEvents = [];
+  state.feedLoadedAt = "";
+  state.feedError = "";
+  state.feedLoadedTotal = 0;
+  state.feedUsingCache = false;
+  hasAutoRequestedFeed = true;
+}
+
+function printCurrentView() {
+  setTimeout(() => window.print(), 0);
+}
+
+function printYearCalendar() {
+  state.outputMode = "year";
+  syncControlsFromState();
+  render();
+  printCurrentView();
+}
+
+async function printSixWeekCalendar() {
+  state.outputMode = "sixWeek";
+  syncControlsFromState();
+
+  if (!state.googleEvents.length && !state.feedError) {
+    hasAutoRequestedFeed = true;
+    await loadCalendarFeed();
+  } else {
+    render();
+  }
+
+  printCurrentView();
+}
+
+function renderSnapshotMonth({ year, month }, derivedData, startIso, endIso) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const previousLastDay = new Date(year, month, 0).getDate();
+  const cells = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const dayNumber = index - firstDay + 1;
+    let label = dayNumber;
+    let iso = "";
+    let outside = false;
+
+    if (dayNumber < 1) {
+      label = previousLastDay + dayNumber;
+      outside = true;
+    } else if (dayNumber > lastDay) {
+      label = dayNumber - lastDay;
+      outside = true;
+    } else {
+      iso = isoDate(year, month, dayNumber);
+    }
+
+    const entry = iso ? derivedData.entries.get(iso) || createEmptyDayEntry() : createEmptyDayEntry();
+    const typeClass = entry.type ? `type-${entry.type}` : "";
+    const programClass = entry.program ? (isSchoolDay(entry) ? "day--program" : "day--program-only") : "";
+    const rangeClass = iso && iso >= startIso && iso <= endIso ? "snapshot-day--in-range" : "";
+
+    cells.push(`
+      <div class="snapshot-day ${outside ? "day--outside" : `${typeClass} ${programClass} ${rangeClass}`.trim()}" data-date="${iso}">
+        <span>${label}</span>
+        ${entry.markers.map((marker) => `<span class="marker marker--${marker}" aria-hidden="true"></span>`).join("")}
+      </div>
+    `);
+  }
+
+  return `
+    <article class="snapshot-month">
+      <h4>${monthNames[month]} ${year}</h4>
+      <div class="snapshot-weekdays">${["Sun", "M", "Tu", "W", "Th", "F", "Sat"].map((day) => `<div>${day}</div>`).join("")}</div>
+      <div class="snapshot-days">${cells.join("")}</div>
+    </article>
+  `;
+}
+
+function renderSixWeekReport(output) {
+  currentDerivedData = buildDerivedCalendarData();
+  const startIso = state.reportStartDate || getTodayIso();
+  const endIso = addDays(startIso, 41);
+  const months = getReportMonths(startIso);
+  const allEvents = getReportEvents(startIso, endIso);
+  const eventRows = allEvents.length
+    ? allEvents.map((event) => `<li class="${event.source === "school" ? "event-list__item--school" : ""}">${escapeHtml(formatEventLine(event))}</li>`).join("")
+    : `<li>No imported or school-calendar events found for this 6 week window.</li>`;
+
+  updateFeedStatus(allEvents.length);
+  output.className = "calendar-sheet calendar-sheet--report";
+  output.setAttribute("aria-label", "Generated 6 week school events calendar");
+  output.innerHTML = `
+    <header class="report-header">
+      <div class="report-brand">
+        <img class="report-logo" src="assets/clarksdale-logo.svg" alt="Clarksdale Collegiate logo" />
+        <div>
+          <h3>Clarksdale Collegiate</h3>
+          <p>PUBLIC CHARTER SCHOOL</p>
+        </div>
+      </div>
+      <h2>6 Week Calendar of Events</h2>
+    </header>
+    <section class="snapshot-grid" aria-label="Month snapshots">
+      ${months.map((month) => renderSnapshotMonth(month, currentDerivedData, startIso, endIso)).join("")}
+    </section>
+    <ol class="event-list" aria-label="Events from school calendar and Google Calendar">
+      ${eventRows}
+    </ol>
+    <section class="report-legend" aria-label="School calendar legend">
+      <div class="report-legend__group">
+        <div><span class="swatch swatch--pd"></span><span>PD Day / No School</span></div>
+        <div><span class="swatch swatch--program"></span><span>${escapeHtml(state.programLabel)} Day Only</span></div>
+        <div><span class="swatch swatch--vacation"></span><span>Vacation / No School</span></div>
+        <div><span class="swatch swatch--both"></span><span>School + ${escapeHtml(state.programLabel)}</span></div>
+        <div><span class="swatch swatch--abbreviated"></span><span>Abbreviated Day</span></div>
+      </div>
+      <div class="report-legend__events">
+        ${markerLegend("trimester", "1st Day of Trimester")}
+        ${markerLegend("reportK6", "Report Card Night K-6")}
+        ${markerLegend("quarter", "1st Day of Quarter")}
+        ${markerLegend("report710", "Report Card Night 7-10")}
+        ${markerLegend("last", "Last Day of School")}
+      </div>
+    </section>
+  `;
+}
+
 function markerLegend(marker, label) {
   return `
     <div class="legend-item">
@@ -578,10 +1192,26 @@ function updateTextContent() {
 }
 
 function render() {
-  currentDerivedData = buildDerivedCalendarData();
   saveState();
-  const yearRange = `${state.startYear}-${String(Number(state.startYear) + 1).slice(2)}`;
   const output = document.querySelector("#calendarOutput");
+  const previewTitle = document.querySelector("#previewTitle");
+
+  if (previewTitle) {
+    previewTitle.textContent = state.outputMode === "sixWeek" ? "Printable 6 week events calendar" : "Printable yearly calendar";
+  }
+
+  if (state.outputMode === "sixWeek") {
+    renderSixWeekReport(output);
+    autoLoadCalendarFeed();
+    return;
+  }
+
+  updateFeedStatus(0);
+
+  currentDerivedData = buildDerivedCalendarData();
+  const yearRange = `${state.startYear}-${String(Number(state.startYear) + 1).slice(2)}`;
+  output.className = "calendar-sheet";
+  output.setAttribute("aria-label", "Generated school calendar");
 
   output.innerHTML = `
     <header class="calendar-header">
@@ -641,6 +1271,8 @@ function bindControls() {
     "programLabel",
     "k6Hours",
     "upperHours",
+    "outputMode",
+    "reportStartDate",
     "rangeStart",
     "rangeEnd",
     "rangeType",
@@ -658,14 +1290,24 @@ function bindControls() {
   ["schoolName", "calendarTitle", "programLabel", "k6Hours", "upperHours"].forEach((id) => {
     controls[id].addEventListener("input", () => {
       state[id] = controls[id].value;
-      saveState();
-      updateTextContent();
+      render();
     });
   });
 
   controls.startYear.addEventListener("change", () => {
     state.startYear = Number(controls.startYear.value) || defaultStartYear;
     syncDateDefaultsFromYear();
+    render();
+  });
+
+  controls.outputMode.addEventListener("change", () => {
+    state.outputMode = outputModes.has(controls.outputMode.value) ? controls.outputMode.value : "year";
+    render();
+  });
+
+  controls.reportStartDate.addEventListener("change", () => {
+    if (!controls.reportStartDate.value) return;
+    state.reportStartDate = controls.reportStartDate.value;
     render();
   });
 
@@ -698,6 +1340,20 @@ function bindControls() {
     document.querySelector("#importFile").click();
   });
 
+  document.querySelector("#loadFeedButton").addEventListener("click", () => {
+    hasAutoRequestedFeed = true;
+    loadCalendarFeed({ manual: true });
+  });
+
+  document.querySelector("#importEventsButton").addEventListener("click", () => {
+    document.querySelector("#importEventsFile").click();
+  });
+
+  document.querySelector("#clearEventsButton").addEventListener("click", () => {
+    clearFeedState();
+    render();
+  });
+
   document.querySelector("#importFile").addEventListener("change", (event) => {
     const [file] = event.target.files;
     if (!file) return;
@@ -719,11 +1375,39 @@ function bindControls() {
     reader.readAsText(file);
   });
 
-  document.querySelector("#printButton").addEventListener("click", () => window.print());
+  document.querySelector("#importEventsFile").addEventListener("change", (event) => {
+    const [file] = event.target.files;
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      try {
+        const importedEvents = parseEventFile(String(reader.result || ""), file.name);
+        applyLoadedFeed(importedEvents);
+        state.outputMode = "sixWeek";
+        syncControlsFromState();
+        render();
+      } catch {
+        alert("That file could not be loaded as Google Calendar events. Try a Google Calendar .ics export or JSON event list.");
+      } finally {
+        event.target.value = "";
+      }
+    });
+    reader.readAsText(file);
+  });
+
+  document.querySelector("#printButton").addEventListener("click", printCurrentView);
+  document.querySelector("#printYearButton").addEventListener("click", printYearCalendar);
+  document.querySelector("#printSixWeekButton").addEventListener("click", printSixWeekCalendar);
 }
 
-seedSample();
-loadSavedState();
-hasHydrated = true;
-bindControls();
-render();
+async function initializeApp() {
+  seedSample();
+  await loadDefaultCalendarState();
+  loadSavedState();
+  hasHydrated = true;
+  bindControls();
+  render();
+}
+
+initializeApp();
