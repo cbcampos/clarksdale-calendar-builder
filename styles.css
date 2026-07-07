@@ -755,14 +755,6 @@ select {
   min-width: 0;
 }
 
-.event-row--all-day {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.event-row--all-day .event-row__time {
-  display: none;
-}
-
 .event-row--school .event-row__title {
   font-weight: 700;
 }
