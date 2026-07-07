@@ -868,10 +868,58 @@ function formatTimeLabel(event) {
   return `${startLabel}-${end.toLocaleTimeString("en-US", timeOptions).replace(" ", " ")}`;
 }
 
-function formatEventLine(event) {
-  const timeLabel = formatTimeLabel(event);
-  const location = event.location && !event.title.toLowerCase().includes(event.location.toLowerCase()) ? ` - ${event.location}` : "";
-  return `${formatDateSpan(event)}${timeLabel ? ` @ ${timeLabel}` : ""} - ${event.title}${location}`;
+function formatEventTitle(event) {
+  let title = event.title.trim();
+
+  if (event.location && title.toLowerCase().endsWith(event.location.toLowerCase())) {
+    title = title.slice(0, -event.location.length).replace(/\s+-\s*$/, "").trim();
+  }
+
+  return title.replace(/\s+-\s+[^-]*,\s*[A-Z]{2}(?:\s+\d{5})?$/g, "").trim();
+}
+
+function groupEventsByDate(events) {
+  return events.reduce((groups, event) => {
+    const dateLabel = formatDateSpan(event);
+    const existing = groups.find((group) => group.dateLabel === dateLabel);
+
+    if (existing) {
+      existing.events.push(event);
+    } else {
+      groups.push({ dateLabel, events: [event] });
+    }
+
+    return groups;
+  }, []);
+}
+
+function renderEventAgenda(events) {
+  if (!events.length) {
+    return `<p class="event-list__empty">No imported or school-calendar events found for this 6 week window.</p>`;
+  }
+
+  return groupEventsByDate(events)
+    .map(
+      (group) => `
+        <section class="event-day">
+          <h4>${escapeHtml(group.dateLabel)}</h4>
+          <ul>
+            ${group.events
+              .map((event) => {
+                const timeLabel = formatTimeLabel(event);
+                return `
+                  <li class="event-row ${event.source === "school" ? "event-row--school" : ""}">
+                    <span class="event-row__time">${timeLabel ? escapeHtml(timeLabel) : ""}</span>
+                    <span class="event-row__title">${escapeHtml(formatEventTitle(event))}</span>
+                  </li>
+                `;
+              })
+              .join("")}
+          </ul>
+        </section>
+      `,
+    )
+    .join("");
 }
 
 function unfoldIcsLines(text) {
@@ -1094,9 +1142,6 @@ function renderSixWeekReport(output) {
   const endIso = addDays(startIso, 41);
   const months = getReportMonths(startIso);
   const allEvents = getReportEvents(startIso, endIso);
-  const eventRows = allEvents.length
-    ? allEvents.map((event) => `<li class="${event.source === "school" ? "event-list__item--school" : ""}">${escapeHtml(formatEventLine(event))}</li>`).join("")
-    : `<li>No imported or school-calendar events found for this 6 week window.</li>`;
 
   updateFeedStatus(allEvents.length);
   output.className = "calendar-sheet calendar-sheet--report";
@@ -1115,9 +1160,9 @@ function renderSixWeekReport(output) {
     <section class="snapshot-grid" aria-label="Month snapshots">
       ${months.map((month) => renderSnapshotMonth(month, currentDerivedData, startIso, endIso)).join("")}
     </section>
-    <ol class="event-list" aria-label="Events from school calendar and Google Calendar">
-      ${eventRows}
-    </ol>
+    <section class="event-list" aria-label="Events from school calendar and Google Calendar">
+      ${renderEventAgenda(allEvents)}
+    </section>
     <section class="report-legend" aria-label="School calendar legend">
       <div class="report-legend__group">
         <div><span class="swatch swatch--pd"></span><span>PD Day / No School</span></div>

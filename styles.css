@@ -691,24 +691,65 @@ select {
 
 .event-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   align-content: start;
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   padding: 0;
   color: var(--ink);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.18;
-  list-style: none;
-  text-align: center;
+  line-height: 1.12;
+  text-align: left;
 }
 
-.event-list li {
+.event-day {
   break-inside: avoid;
+  page-break-inside: avoid;
 }
 
-.event-list__item--school {
+.event-day h4 {
+  margin: 0 0 2px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.event-day ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.event-row__time {
+  color: var(--brand-charcoal);
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.event-row__title {
+  min-width: 0;
+}
+
+.event-row--school .event-row__title {
+  font-weight: 700;
+}
+
+.event-list__empty {
+  margin: 0;
+  font-weight: 700;
+  text-align: center;
 }
 
 .program-count {
@@ -902,5 +943,17 @@ select {
     width: 8.5in;
     min-height: 11in;
     padding: 0.35in 0.48in 0.32in;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  .calendar-sheet--report .event-list {
+    break-inside: auto;
+  }
+
+  .event-day,
+  .event-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
