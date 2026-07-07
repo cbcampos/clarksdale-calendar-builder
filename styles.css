@@ -226,6 +226,7 @@ select {
   padding: 36px 46px 32px;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
+  page: six-week-report;
 }
 
 .calendar-header {
@@ -934,6 +935,11 @@ select {
 }
 
 @media print {
+  @page six-week-report {
+    size: letter portrait;
+    margin: 0.2in;
+  }
+
   body {
     background: white;
   }
@@ -960,15 +966,24 @@ select {
   }
 
   .calendar-sheet--report {
-    width: 8.5in;
-    min-height: 11in;
-    padding: 0.35in 0.48in 0.32in;
+    width: 8.1in;
+    min-height: 10.55in;
+    margin: 0 auto;
+    padding: 0.28in 0.36in 0.22in;
     page-break-inside: auto;
     break-inside: auto;
   }
 
   .calendar-sheet--report .event-list {
     break-inside: auto;
+  }
+
+  .calendar-sheet--report .report-legend {
+    gap: 5px;
+    margin-top: 10px;
+    font-size: 9.5px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .event-day,
