@@ -1424,13 +1424,9 @@ function bindControls() {
 
   document.querySelector("#applySingle").addEventListener("click", () => {
     if (!controls.singleDate.value) return;
-    if (controls.singleType.value === "abbreviatedTrimester") {
-      setDateType(controls.singleDate.value, "abbreviated");
-      setDateMarker(controls.singleDate.value, "trimester");
-    } else {
-      setDateType(controls.singleDate.value, controls.singleType.value);
-      setDateMarker(controls.singleDate.value, controls.singleMarker.value);
-    }
+    const markerValues = Array.from(controls.singleMarker.selectedOptions, (option) => option.value).join(",");
+    setDateType(controls.singleDate.value, controls.singleType.value);
+    setDateMarker(controls.singleDate.value, markerValues);
     render();
   });
 

@@ -92,21 +92,19 @@
                 <option value="summerbreak">Summer break</option>
                 <option value="vacation">Vacation / no school</option>
                 <option value="abbreviated">Abbreviated day</option>
-                <option value="abbreviatedTrimester">Abbreviated + K-6 trimester start</option>
               </select>
             </label>
             <label>
-              Event marker
-              <select id="singleMarker">
-                <option value="">None</option>
+              Event markers
+              <select id="singleMarker" multiple size="6">
                 <option value="trimester">1st day of K-6 trimester</option>
                 <option value="quarter">1st day of quarter</option>
-                <option value="trimester,quarter">Trimester + quarter</option>
                 <option value="last">Last day of school</option>
                 <option value="reportK6">Report card night K-6</option>
                 <option value="report710">Report card night 7-10</option>
                 <option value="saturday">K-10 Saturday school</option>
               </select>
+              <span class="field-hint">Hold Command or Shift to select more than one marker.</span>
             </label>
             <button id="applySingle" type="button">Update date</button>
           </div>

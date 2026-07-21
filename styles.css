@@ -111,6 +111,13 @@ button:hover {
   font-weight: 700;
 }
 
+.field-hint {
+  color: var(--brand-charcoal);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
 .editor__header {
   grid-template-columns: 1fr auto;
   align-items: start;
