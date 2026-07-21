@@ -1424,8 +1424,13 @@ function bindControls() {
 
   document.querySelector("#applySingle").addEventListener("click", () => {
     if (!controls.singleDate.value) return;
-    setDateType(controls.singleDate.value, controls.singleType.value);
-    setDateMarker(controls.singleDate.value, controls.singleMarker.value);
+    if (controls.singleType.value === "abbreviatedTrimester") {
+      setDateType(controls.singleDate.value, "abbreviated");
+      setDateMarker(controls.singleDate.value, "trimester");
+    } else {
+      setDateType(controls.singleDate.value, controls.singleType.value);
+      setDateMarker(controls.singleDate.value, controls.singleMarker.value);
+    }
     render();
   });
 
